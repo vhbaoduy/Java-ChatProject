@@ -116,7 +116,7 @@ public class ClientProcessing {
             dataOutputStream.flush();
 
         } catch (Exception e) {
-            System.out.println(e.getMessage());
+            System.out.println("Send mess bug " + e.getMessage());
         }
 
     }
@@ -151,7 +151,7 @@ public class ClientProcessing {
         } else {
             form.setDisplay(true);
         }
-        form.appendMessage(sender + ":" + message);
+        form.appendMessage(sender + ": " + message);
     }
 
     public void requestUserList() {
@@ -162,22 +162,23 @@ public class ClientProcessing {
     }
 
 
-    public void sendFileInPrivateChat(String receiver, String fileName, String path){
+    public void sendFileInPrivateChat(String receiver, String fileName, String path) {
         Thread thread = new Thread(new Runnable() {
             @Override
             public void run() {
                 try {
-                    HashMap<String,String> data = new HashMap<>();
-                    data.put("type","PrivateFile");
-                    data.put("receiver",receiver);
-                    data.put("fileName",fileName);
+                    HashMap<String, String> data = new HashMap<>();
+                    data.put("sender",usernameOfClient);
+                    data.put("type", "PrivateFile");
+                    data.put("receiver", receiver);
+                    data.put("fileName", fileName);
 
                     byte[] fileContent = Files.readAllBytes(Path.of(path));
                     long totalPackage = (fileContent.length / (BUFFER_SIZE + 1) + 1);
-                    data.put("totalPackage",String.valueOf(totalPackage));
+                    data.put("totalPackage", String.valueOf(totalPackage));
                     long sum = fileContent.length;
                     byte[] buffer;
-                    int curPackage = 0;
+                    int curPackage = 1;
                     int counter = 0;
                     System.out.println(sum);
                     for (; curPackage <= totalPackage; ++curPackage) {
@@ -185,14 +186,15 @@ public class ClientProcessing {
                         sum -= copyLength;
                         buffer = Arrays.copyOfRange(fileContent, counter, (int) (counter + copyLength));
                         counter += copyLength;
-                        if(buffer.length > 0) {
+                        if (buffer.length > 0) {
                             data.put("currentPackage", String.valueOf(curPackage));
                             data.put("data", StructClass.packBufferToString(buffer));
                             sendMessage(StructClass.pack(data));
-                            Thread.sleep(200);
+                            Thread.sleep(50);
                         }
                     }
-                }catch (Exception e){
+                    privateChat.get(receiver).appendMessage("Sent file successfully !");
+                } catch (Exception e) {
                     System.out.println("Send private file " + e.getMessage());
                 }
 
@@ -202,7 +204,7 @@ public class ClientProcessing {
     }
 
 
-    public void receivePrivateFile(HashMap<String,String >data){
+    public void receivePrivateFile(HashMap<String, String> data) {
 
         String fileName = data.get("fileName");
         String bufferString = data.get("data");
@@ -211,20 +213,30 @@ public class ClientProcessing {
             File file = new File(fileName);
             if (!file.exists()) {
                 file.createNewFile();
-            }else{
+            } else {
                 // overwrite
                 if (curPackage == 0) {
                     file.delete();
                     file.createNewFile();
                 }
             }
-            FileOutputStream fileOutputStream = new FileOutputStream(file,true);
+            FileOutputStream fileOutputStream = new FileOutputStream(file, true);
 
             byte[] buffer = StructClass.unpackBufferFromString(bufferString);
+            assert buffer != null;
             fileOutputStream.write(buffer);
             fileOutputStream.close();
+            if (Integer.parseInt(data.get("currentPackage")) == Integer.parseInt(data.get("totalPackage"))) {
+                PrivateChat form = privateChat.get(data.get("sender"));
+                form.appendMessage("Received file successfully!");
+            }
+            if (Integer.parseInt(data.get("currentPackage")) == 1) {
+                PrivateChat form = privateChat.get(data.get("sender"));
+                form.appendMessage("Receiving ...");
+            }
 
-        }catch (Exception e){
+
+        } catch (Exception e) {
             System.out.println("Receive: " + e.getMessage());
         }
     }
@@ -286,36 +298,38 @@ public class ClientProcessing {
                                 break;
                             case "FileRequest":
                                 sender = data.get("sender");
-                                String receiver = data.get("receiver");
-                                String fileName = data.get("fileName");
-                                String size = data.get("size");
-                                String path = data.get("path");
-                                String text = " request to send file " + fileName + "(" + size + " bytes)" + " to you";
-                                appendTextInPrivateChat(sender, text);
-                                String confirmText = "Do you want to receive " + fileName + "(" + size + " bytes)" + " from " + sender + "?";
-                                PrivateChat form = privateChat.get(sender);
-                                if (JOptionPane.showConfirmDialog(null, confirmText, "Notification", JOptionPane.YES_NO_OPTION) == 0) {
-                                    respondFileRequest(sender, receiver, fileName, size, path, true);
-                                    form.appendMessage("You accept ...");
+                                if (!sender.equals(usernameOfClient)) {
+                                    String receiver = data.get("receiver");
+                                    String fileName = data.get("fileName");
+                                    String size = data.get("size");
+                                    String path = data.get("path");
+                                    String text = " request to send file " + fileName + "(" + size + " bytes)" + " to you";
+                                    appendTextInPrivateChat(sender, text);
+                                    String confirmText = "Do you want to receive " + fileName + "(" + size + " bytes)" + " from " + sender + "?";
+                                    PrivateChat form = privateChat.get(sender);
+                                    if (JOptionPane.showConfirmDialog(form, confirmText, "Notification", JOptionPane.YES_NO_OPTION) == 0) {
+                                        respondFileRequest(sender, receiver, fileName, size, path, true);
+                                        form.appendMessage("You accept ...");
 
-                                } else {
-                                    respondFileRequest(sender, receiver, fileName, size, path, false);
-                                    form.appendMessage("You refuse ...");
+
+                                    } else {
+                                        respondFileRequest(sender, receiver, fileName, size, path, false);
+                                        form.appendMessage("You refuse ...");
+                                    }
                                 }
                                 break;
                             case "FileResponse":
                                 sender = data.get("sender");
-                                if (sender.equals(usernameOfClient)) {
-                                    receiver = data.get("receiver");
-                                    form = privateChat.get(receiver);
-                                    String accept = data.get("accept");
-                                    if (accept.equalsIgnoreCase("true")) {
-                                        form.appendMessage(receiver + " accept ...");
-                                        sendFileInPrivateChat(receiver,data.get("fileName"),data.get("path"));
-                                    } else {
-                                        form.appendMessage(receiver + " refuse ...");
+                                String receiver = data.get("receiver");
+                                PrivateChat form = privateChat.get(receiver);
+                                String accept = data.get("accept");
+                                if (!accept.equalsIgnoreCase("true")) {
+                                    form.appendMessage(receiver + " refuse ...");
+                                } else {
+                                    form.appendMessage(receiver + " accept ...");
+                                    form.appendMessage("Sending ...");
+                                    sendFileInPrivateChat(receiver, data.get("fileName"), data.get("path"));
 
-                                    }
                                 }
                                 break;
 

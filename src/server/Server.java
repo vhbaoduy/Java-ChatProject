@@ -9,6 +9,7 @@ import java.awt.event.ActionListener;
 import java.io.*;
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Locale;
 
@@ -19,6 +20,7 @@ import java.util.Locale;
  * Description: ...
  */
 public class Server extends JFrame implements ActionListener {
+    public final int BUFFER_SIZE = 40960;
 
     // GUI
     final private int WIDTH = 480;
@@ -261,7 +263,7 @@ public class Server extends JFrame implements ActionListener {
                     return false;
                 }
             }
-            clients =null;
+            clients = null;
             updateUserModel();
             try {
                 serverSocket.close();
@@ -284,10 +286,10 @@ public class Server extends JFrame implements ActionListener {
      */
     public int checkLogin(String username, String password) {
         try {
-            if (clients.get(username) != null){
+            if (clients.get(username) != null) {
                 return 0;
             }
-            File file = new File(directoryData +"/" +pathToData);
+            File file = new File(directoryData + "/" + pathToData);
             if (!file.exists()) {
                 return 2;
             }
@@ -301,9 +303,12 @@ public class Server extends JFrame implements ActionListener {
                 }
                 String[] lineList = line.split(";");
                 if (lineList.length == 2) {
-                    if (user.compareToIgnoreCase(lineList[0]) == 0 && password.equals(lineList[1])) {
-
-                        return 1;
+                    if (user.compareToIgnoreCase(lineList[0]) == 0) {
+                        if (password.equals(lineList[1])) {
+                            return 1;
+                        }else{
+                            return -1;
+                        }
                     }
                 }
             }
@@ -318,8 +323,9 @@ public class Server extends JFrame implements ActionListener {
 
     /**
      * Send message to client
+     *
      * @param dataOutputStream Data Output Stream of client
-     * @param data hash map string - string of data
+     * @param data             hash map string - string of data
      */
     public void sendMessageToClient(DataOutputStream dataOutputStream, HashMap<String, String> data) {
         try {
@@ -332,7 +338,7 @@ public class Server extends JFrame implements ActionListener {
     }
 
 
-    public void respondLogin(DataOutputStream dataOutputStream,  String username, int isSucceed) {
+    public void respondLogin(DataOutputStream dataOutputStream, String username, int isSucceed) {
         HashMap<String, String> data = new HashMap<>();
         data.put("type", "LoginResponse");
         data.put("isSucceed", String.valueOf(isSucceed));
@@ -351,14 +357,14 @@ public class Server extends JFrame implements ActionListener {
         try {
             File dir = new File(directoryData);
             File file = null;
-            if (!dir.exists()){
-                if(dir.mkdirs()){
+            if (!dir.exists()) {
+                if (dir.mkdirs()) {
                     System.out.println("Data directory are created!");
-                }else{
+                } else {
                     System.out.println("Failed to create directory!");
                 }
             }
-            file = new File(directoryData +"/"+pathToData);
+            file = new File(directoryData + "/" + pathToData);
             if (!file.exists()) {
                 file.createNewFile();
             }
@@ -390,8 +396,9 @@ public class Server extends JFrame implements ActionListener {
 
     /**
      * Respond registration to client
+     *
      * @param dataOutputStream Data output stream of client
-     * @param isSucceed True/false
+     * @param isSucceed        True/false
      */
     public void respondRegistration(DataOutputStream dataOutputStream, boolean isSucceed) {
         HashMap<String, String> data = new HashMap<>();
@@ -411,7 +418,7 @@ public class Server extends JFrame implements ActionListener {
                     Socket clientSocket;
                     try {
                         clientSocket = serverSocket.accept();
-                        textArea.append("Talking to client: [" + clientSocket.getPort()+"]\n");
+                        textArea.append("Talking to client: [" + clientSocket.getPort() + "]\n");
                         Thread clientThread1 = new Thread(new ReceiveThread(clientSocket));
                         clientThread1.start();
 
@@ -432,7 +439,7 @@ public class Server extends JFrame implements ActionListener {
      */
     public String[] getUserList(String usernameRequest) {
         String[] keys = clients.keySet().toArray(new String[0]);
-        if (keys.length >0) {
+        if (keys.length > 0) {
             String[] list = new String[keys.length - 1];
             int i = 0;
             for (String key : keys) {
@@ -448,7 +455,8 @@ public class Server extends JFrame implements ActionListener {
 
     /**
      * Respond user list to client
-     * @param usernameRequest username of client
+     *
+     * @param usernameRequest  username of client
      * @param dataOutputStream data output stream of client
      */
     public void respondUserList(String usernameRequest, DataOutputStream dataOutputStream) {
@@ -467,16 +475,17 @@ public class Server extends JFrame implements ActionListener {
         }
 
     }
-    public void checkClientsSocket(){
+
+    public void checkClientsSocket() {
         String[] users = clients.keySet().toArray(new String[0]);
-        for (String user: users){
+        for (String user : users) {
             Socket socket = clients.get(user);
-            try{
-                if (socket.isClosed()){
+            try {
+                if (socket.isClosed()) {
                     textArea.append(user + " has disconnected.\n");
-                    clients.remove(user,socket);
+                    clients.remove(user, socket);
                 }
-            }catch (Exception e){
+            } catch (Exception e) {
                 System.out.println(e.getMessage());
             }
         }
@@ -491,7 +500,7 @@ public class Server extends JFrame implements ActionListener {
 
         for (String user : users) {
             try {
-                respondUserList(user,clientsDataOutputStream.get(user));
+                respondUserList(user, clientsDataOutputStream.get(user));
             } catch (Exception e) {
                 System.out.println(e.getMessage());
             }
@@ -500,70 +509,71 @@ public class Server extends JFrame implements ActionListener {
 
     /**
      * Send private chat from sender to receiver
-     * @param sender username of sender
+     *
+     * @param sender   username of sender
      * @param receiver username of receiver
-     * @param message string of message
+     * @param message  string of message
      */
-    public void sendPrivateChat(String sender, String receiver,String message){
-        try{
+    public void sendPrivateChat(String sender, String receiver, String message) {
+        try {
             DataOutputStream receiverOutput = clientsDataOutputStream.get(receiver);
             HashMap<String, String> data = new HashMap<>();
             data.put("type", "PrivateChat");
             data.put("sender", sender);
-            data.put("message",message);
-            sendMessageToClient(receiverOutput,data);
+            data.put("message", message);
+            sendMessageToClient(receiverOutput, data);
 
-        }catch (Exception e){
+        } catch (Exception e) {
             System.out.println("Send private chat " + e.getMessage());
         }
     }
 
-    public void sendFileRequest(String sender, String receiver, String filename, String size,String path){
-        try{
+    public void sendFileRequest(String sender, String receiver, String filename, String size, String path) {
+        try {
             DataOutputStream receiverOutput = clientsDataOutputStream.get(receiver);
             HashMap<String, String> data = new HashMap<>();
             data.put("type", "FileRequest");
             data.put("sender", sender);
-            data.put("receiver",receiver);
-            data.put("fileName",filename);
+            data.put("receiver", receiver);
+            data.put("fileName", filename);
             data.put("size", size);
-            data.put("path",path);
-            sendMessageToClient(receiverOutput,data);
+            data.put("path", path);
+            sendMessageToClient(receiverOutput, data);
 
-        }catch (Exception e){
+        } catch (Exception e) {
             System.out.println("Send private chat " + e.getMessage());
         }
     }
 
-    public void sendFileResponse(String sender, String receiver,String path,String fileName, String accept){
-        try{
+    public void sendFileResponse(String sender, String receiver, String path, String fileName, String accept) {
+        try {
             DataOutputStream senderOutput = clientsDataOutputStream.get(sender);
             HashMap<String, String> data = new HashMap<>();
             data.put("type", "FileResponse");
             data.put("sender", sender);
-            data.put("receiver",receiver);
-            data.put("accept",accept);
-            data.put("fileName",fileName);
-            data.put("path",path);
-            sendMessageToClient(senderOutput,data);
+            data.put("receiver", receiver);
+            data.put("accept", accept);
+            data.put("fileName", fileName);
+            data.put("path", path);
+            sendMessageToClient(senderOutput, data);
 
-        }catch (Exception e){
+        } catch (Exception e) {
             System.out.println("Send private chat " + e.getMessage());
         }
     }
 
-    public void sendPrivateFile(HashMap<String, String> data){
+    public void sendPrivateFile(HashMap<String, String> data) {
         String receiver = data.get("receiver");
         DataOutputStream receiverOutput = clientsDataOutputStream.get(receiver);
-        sendMessageToClient(receiverOutput,data);
+        sendMessageToClient(receiverOutput, data);
     }
-
 
 
     public class ReceiveThread implements Runnable {
         private Socket clientSocket;
         private DataInputStream dataInputStream;
         private DataOutputStream dataOutputStream;
+
         public ReceiveThread(Socket clientSocket) {
             this.clientSocket = clientSocket;
             try {
@@ -586,6 +596,7 @@ public class Server extends JFrame implements ActionListener {
                 try {
 //                    receivedMessage = bufferedReader.readLine();
                     receivedMessage = dataInputStream.readUTF();
+;
                     HashMap<String, String> data = StructClass.unpack(receivedMessage);
 
                     String type = data.get("type");
@@ -597,8 +608,8 @@ public class Server extends JFrame implements ActionListener {
                             if (status == 1) {
                                 clients.put(username, clientSocket);
 //                                clientsBufferWriter.put(username,bufferedWriter);
-                                clientsDataOutputStream.put(username,dataOutputStream);
-                                textArea.append("[LOGIN]-[" +clientSocket.getPort()+"]["+ username + "] has been logged in successfully!\n");
+                                clientsDataOutputStream.put(username, dataOutputStream);
+                                textArea.append("[LOGIN]-[" + clientSocket.getPort() + "][" + username + "] has been logged in successfully!\n");
                                 updateUserModel();
                             }
                             respondLogin(dataOutputStream, data.get("username"), status);
@@ -608,14 +619,14 @@ public class Server extends JFrame implements ActionListener {
                         case "Logout":
                             clients.remove(username);
                             clientsDataOutputStream.remove(username);
-                            textArea.append("[LOGOUT]-[" +clientSocket.getPort()+"]["+ username + "] has been logged out !\n");
+                            textArea.append("[LOGOUT]-[" + clientSocket.getPort() + "][" + username + "] has been logged out !\n");
                             updateUserModel();
                             broadcastUserList();
                             break;
                         case "Registration":
                             flag = registerAccount(username, data.get("password"));
                             if (flag) {
-                                textArea.append("[REGISTRATION]-["+clientSocket.getPort()+"]["+ username+ "] has been registered successfully!\n");
+                                textArea.append("[REGISTRATION]-[" + clientSocket.getPort() + "][" + username + "] has been registered successfully!\n");
                             }
                             respondRegistration(dataOutputStream, flag);
                             break;
@@ -627,19 +638,18 @@ public class Server extends JFrame implements ActionListener {
                             String sender = data.get("sender");
                             String receiver = data.get("receiver");
                             String message = data.get("message");
-                            sendPrivateChat(sender,receiver,message);
+                            sendPrivateChat(sender, receiver, message);
                             break;
 
                         case "FileRequest":
                             sender = data.get("sender");
                             receiver = data.get("receiver");
-                            sendFileRequest(sender,receiver,data.get("fileName"),data.get("size"),data.get("path"));
-
-
+                            sendFileRequest(sender, receiver, data.get("fileName"), data.get("size"), data.get("path"));
+                            break;
                         case "FileResponse":
                             sender = data.get("sender");
                             receiver = data.get("receiver");
-                            sendFileResponse(sender,receiver,data.get("path"),data.get("fileName"),data.get("accept"));
+                            sendFileResponse(sender, receiver, data.get("path"), data.get("fileName"), data.get("accept"));
                             break;
 
                         case "PrivateFile":

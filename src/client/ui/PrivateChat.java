@@ -34,12 +34,12 @@ public class PrivateChat extends JFrame implements ActionListener {
     public PrivateChat(String sender, String receiver){
         this.sender = sender;
         this.receiver = receiver;
-        initialFrame(receiver);
+        initialFrame("Box chat (" +sender+"-"+receiver+")");
         createUI();
         setDisplay(true);
     }
-    public void initialFrame(String user){
-        setTitle(user);
+    public void initialFrame(String text){
+        setTitle(text);
         setDefaultCloseOperation(HIDE_ON_CLOSE);
         setUndecorated(true);
         getRootPane().setWindowDecorationStyle(JRootPane.FRAME);

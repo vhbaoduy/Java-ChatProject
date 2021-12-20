@@ -40,7 +40,14 @@ public class ClientScreen extends JFrame implements ActionListener, MouseListene
 
     public void initialFrame(String userName){
         setTitle(userName);
-        setDefaultCloseOperation(DISPOSE_ON_CLOSE);
+        setDefaultCloseOperation(EXIT_ON_CLOSE);
+        addWindowListener(new java.awt.event.WindowAdapter() {
+            @Override
+            public void windowClosing(java.awt.event.WindowEvent windowEvent) {
+                logOut();
+                System.exit(0);
+            }
+        });
         setUndecorated(true);
         getRootPane().setWindowDecorationStyle(JRootPane.FRAME);
         setResizable(false);
@@ -102,18 +109,18 @@ public class ClientScreen extends JFrame implements ActionListener, MouseListene
                     JOptionPane.YES_NO_OPTION
                     );
             if (choice == 0){
-                HashMap<String, String> data =new HashMap<>();
-                data.put("type","Logout");
-                data.put("username",clientName);
-                ClientProcessing.getInstance().sendMessage(StructClass.pack(data));
-                ClientProcessing.getInstance().closeConnection();
-                dispose();
+                logOut();
                 new ClientProcessing(true);
-
             }
         }
     }
-
+    private void logOut(){
+        HashMap<String, String> data =new HashMap<>();
+        data.put("type","Logout");
+        data.put("username",clientName);
+        ClientProcessing.getInstance().sendMessage(StructClass.pack(data));
+        ClientProcessing.getInstance().closeConnection();
+    }
     public void setUserModel(String [] list){
         userModel = new DefaultListModel<>();
         for (String str:list){

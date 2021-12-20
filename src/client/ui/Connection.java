@@ -34,7 +34,7 @@ public class Connection extends JFrame implements ActionListener {
     }
     public void initialFrame(){
         setTitle("Config");
-        setDefaultCloseOperation(DISPOSE_ON_CLOSE);
+        setDefaultCloseOperation(EXIT_ON_CLOSE);
         setUndecorated(true);
         getRootPane().setWindowDecorationStyle(JRootPane.FRAME);
         setResizable(false);
