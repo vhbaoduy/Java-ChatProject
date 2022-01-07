@@ -96,9 +96,14 @@ public class ClientScreen extends JFrame implements ActionListener, MouseListene
             if (userList.isSelectionEmpty()){
                 JOptionPane.showMessageDialog(this,"You need to select users to chat!!!");
             }else {
-                String string = userList.getSelectedValue();
-
-                PrivateChat privateChat = new PrivateChat(clientName,string);
+                String receiver = userList.getSelectedValue();
+                PrivateChat form = ClientProcessing.privateChat.get(receiver);
+                if (form == null) {
+                    form = new PrivateChat(clientName, receiver);
+                    ClientProcessing.privateChat.put(receiver, form);
+                } else {
+                    form.setDisplay(true);
+                }
             }
         }
 
